@@ -1,0 +1,24 @@
+Use these files to plot your data using Chartjs library. 
+- Create a folder called Chartjs
+- Download all the files in your folder
+
+See the diagram.png to understand the interaction between files:
+https://github.com/faridfarahmand/SSU/blob/main/IoTCourse/Chartjs/chartjs_diagram.png 
+
+Read the lecture slides for more details: 
+https://docs.google.com/presentation/d/12OeKvbbhhHtoRQHyIuBs_O_sJKi8H5y1
+
+Review the lecture slides on dBase: 
+https://docs.google.com/presentation/d/1ReraXs3__igOTHLCOczssYDbyQ5HIulm  
+
+To access your graph make sure you use the following:
+https://yourusername.net/Chartjs/gragh.html
+
+To modify the chart refer to 
+https://www.chartjs.org/docs/latest/samples/line/line.html 
+
+Here are some of the changes you can make to app.js:
+Change the colors (RGBA) 
+Change the chart type: bar, line, etc.
+Change the title
+.... much more

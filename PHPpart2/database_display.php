@@ -140,11 +140,13 @@ try {
             overflow-x: auto;
         }
 
-        #temperatureChart {
+        #chart-container {
             background-color: white;
             padding: 15px;
             margin-top: 10px;
             margin-bottom: 30px;
+            width: 640px;
+            height: 400px;
         }
 
     </style>
@@ -219,53 +221,14 @@ try {
         </select>
     </form>
 
-    <canvas id="temperatureChart"></canvas>
+    <div id="chart-container">
+        <canvas id="mycanvas"></canvas>
+    </div>
 
-    <!-- Chart.js library -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <script>
-        const chartLabels = <?= json_encode($chartLabels) ?>;
-        const chartTemperatures = <?= json_encode($chartTemperatures) ?>;
-
-        new Chart(document.getElementById('temperatureChart'), {
-            type: 'bar',
-            data: {
-                labels: chartLabels,
-                datasets: [{
-                    label: 'Sensor <?= htmlspecialchars($selectedNode, ENT_QUOTES) ?>',
-                    data: chartTemperatures,
-                    backgroundColor: 'rgba(0, 128, 0, 0.65)',
-                    borderColor: 'green',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Sensor <?= htmlspecialchars($selectedNode, ENT_QUOTES) ?>'
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Time'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Temperature (°C)'
-                        },
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    </script>
+    <!-- Course Chart.js setup: jQuery, Chart.js, then app.js -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+    <script src="js/app.js"></script>
 
     <h2>JSON Data for <?= htmlspecialchars($selectedNode) ?></h2>
     <pre><?= htmlspecialchars(json_encode($jsonData, JSON_PRETTY_PRINT)) ?></pre>
