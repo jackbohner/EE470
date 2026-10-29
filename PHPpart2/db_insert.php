@@ -12,12 +12,38 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 
-    // Accept the assignment's parameter names.
-    // The alternate names also support the CURL format from the instructions.
-    $nodeName = $_GET['nodeId'] ?? $_GET['node_name'] ?? null;
-    $timeReceived = $_GET['timeReceived'] ?? $_GET['time_received'] ?? null;
-    $temperature = $_GET['nodeTemp'] ?? $_GET['temperature'] ?? null;
-    $humidity = $_GET['humidity'] ?? null;
+    /*
+     * Accept both formats:
+     *
+     * 1) Regular GET:
+     *    ?nodeId=node_3&nodeTemp=34&humidity=50&timeReceived=...
+     *
+     * 2) The assignment's Base64 format, where the entire query string is
+     *    Base64 encoded:
+     *    ?bm9kZUlkPW5vZGVfMyZub2RlVGVtcD0zNCZodW1pZGl0eT01MA==
+     */
+    if (isset($_GET['nodeId']) || isset($_GET['node_name'])) {
+        // Regular GET request.
+        $parameters = $_GET;
+    } else {
+        // The Base64 value is the raw query string after the question mark.
+        $encodedMessage = $_SERVER['QUERY_STRING'] ?? '';
+        $decodedMessage = base64_decode($encodedMessage, true);
+
+        if ($encodedMessage === '' || $decodedMessage === false) {
+            http_response_code(400);
+            exit("Error: invalid Base64 message.\n");
+        }
+
+        // Convert decoded text such as nodeId=node_3&nodeTemp=34 into an array.
+        parse_str($decodedMessage, $parameters);
+    }
+
+    // Accept the assignment's names and the alternate names used by CURL.
+    $nodeName = $parameters['nodeId'] ?? $parameters['node_name'] ?? null;
+    $timeReceived = $parameters['timeReceived'] ?? $parameters['time_received'] ?? null;
+    $temperature = $parameters['nodeTemp'] ?? $parameters['temperature'] ?? null;
+    $humidity = $parameters['humidity'] ?? null;
 
     if ($nodeName === null || $temperature === null || $humidity === null) {
         http_response_code(400);

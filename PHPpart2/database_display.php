@@ -31,6 +31,24 @@ try {
 
     $sensorRegister = $pdo->query($sensorRegisterQuery);
 
+    // Select the node from the dropdown; use node_1 by default
+    $selectedNode = $_GET['node_name'] ?? 'node_1';
+
+    // Confirm that the selected node is registered
+    $nodeCheck = $pdo->prepare(
+        "SELECT COUNT(*) FROM sensor_register WHERE node_name = :node_name"
+    );
+    $nodeCheck->execute(['node_name' => $selectedNode]);
+
+    if ((int)$nodeCheck->fetchColumn() === 0) {
+        $selectedNode = 'node_1';
+    }
+
+    // Retrieve all registered nodes for the dropdown menu
+    $nodeList = $pdo->query(
+        "SELECT node_name FROM sensor_register ORDER BY node_name ASC"
+    );
+
     // Calculate the averages for node_1
     $averageQuery = $pdo->prepare("
         SELECT AVG(temperature) AS average_temperature,
@@ -38,8 +56,36 @@ try {
         FROM sensor_data
         WHERE node_name = :node_name
     ");
-    $averageQuery->execute(['node_name' => 'node_1']);
+    $averageQuery->execute(['node_name' => $selectedNode]);
     $averages = $averageQuery->fetch(PDO::FETCH_ASSOC);
+
+    // Retrieve temperature data for node_1 for the graph
+    $chartQuery = $pdo->prepare("
+        SELECT time_received, temperature
+        FROM sensor_data
+        WHERE node_name = :node_name
+        ORDER BY time_received ASC
+    ");
+    $chartQuery->execute(['node_name' => $selectedNode]);
+
+    $chartLabels = [];
+    $chartTemperatures = [];
+
+    while ($row = $chartQuery->fetch(PDO::FETCH_ASSOC)) {
+        $chartLabels[] = $row['time_received'];
+        $chartTemperatures[] = $row['temperature'];
+    }
+
+    // Retrieve all data for the selected node for JSON display
+    $jsonQuery = $pdo->prepare("
+        SELECT node_name, time_received, temperature, humidity
+        FROM sensor_data
+        WHERE node_name = :node_name
+        ORDER BY time_received ASC
+    ");
+    $jsonQuery->execute(['node_name' => $selectedNode]);
+    $jsonData = $jsonQuery->fetchAll(PDO::FETCH_ASSOC);
+
 
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
@@ -86,6 +132,21 @@ try {
 
         tr:nth-child(even) { background-color: #f2f7fa; }
         tr:hover { background-color: #dceef7; }
+
+        pre {
+            background-color: white;
+            border: 1px solid #cccccc;
+            padding: 15px;
+            overflow-x: auto;
+        }
+
+        #temperatureChart {
+            background-color: white;
+            padding: 15px;
+            margin-top: 10px;
+            margin-bottom: 30px;
+        }
+
     </style>
 </head>
 
@@ -130,7 +191,7 @@ try {
         <?php endwhile; ?>
     </table>
 
-    <h2>Averages for Node 1</h2>
+    <h2>Averages for <?= htmlspecialchars($selectedNode) ?></h2>
     <p>
         Average Temperature:
         <?= $averages['average_temperature'] !== null
@@ -143,5 +204,71 @@ try {
             ? number_format((float)$averages['average_humidity'], 2) . " %"
             : "No data available" ?>
     </p>
+
+    <h2>Temperature Graph</h2>
+
+    <form method="get" action="database_display.php">
+        <label for="node_name">Choose a node:</label>
+        <select name="node_name" id="node_name" onchange="this.form.submit()">
+            <?php while ($node = $nodeList->fetch(PDO::FETCH_ASSOC)): ?>
+                <option value="<?= htmlspecialchars($node['node_name']) ?>"
+                    <?= $node['node_name'] === $selectedNode ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($node['node_name']) ?>
+                </option>
+            <?php endwhile; ?>
+        </select>
+    </form>
+
+    <canvas id="temperatureChart"></canvas>
+
+    <!-- Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const chartLabels = <?= json_encode($chartLabels) ?>;
+        const chartTemperatures = <?= json_encode($chartTemperatures) ?>;
+
+        new Chart(document.getElementById('temperatureChart'), {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Sensor <?= htmlspecialchars($selectedNode, ENT_QUOTES) ?>',
+                    data: chartTemperatures,
+                    backgroundColor: 'rgba(0, 128, 0, 0.65)',
+                    borderColor: 'green',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Sensor <?= htmlspecialchars($selectedNode, ENT_QUOTES) ?>'
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Temperature (°C)'
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+
+    <h2>JSON Data for <?= htmlspecialchars($selectedNode) ?></h2>
+    <pre><?= htmlspecialchars(json_encode($jsonData, JSON_PRETTY_PRINT)) ?></pre>
+
 </body>
 </html>
