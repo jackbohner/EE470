@@ -49,10 +49,12 @@ try {
         "SELECT node_name FROM sensor_register ORDER BY node_name ASC"
     );
 
-    // Calculate the averages for node_1
+    // Calculate humidity and temperature statistics for the selected node
     $averageQuery = $pdo->prepare("
         SELECT AVG(temperature) AS average_temperature,
-               AVG(humidity) AS average_humidity
+               AVG(humidity) AS average_humidity,
+               MAX(humidity) AS maximum_humidity,
+               MIN(humidity) AS minimum_humidity
         FROM sensor_data
         WHERE node_name = :node_name
     ");
@@ -193,7 +195,7 @@ try {
         <?php endwhile; ?>
     </table>
 
-    <h2>Averages for <?= htmlspecialchars($selectedNode) ?></h2>
+    <h2>Statistics for <?= htmlspecialchars($selectedNode) ?></h2>
     <p>
         Average Temperature:
         <?= $averages['average_temperature'] !== null
@@ -204,6 +206,18 @@ try {
         Average Humidity:
         <?= $averages['average_humidity'] !== null
             ? number_format((float)$averages['average_humidity'], 2) . " %"
+            : "No data available" ?>
+    </p>
+    <p>
+        Maximum Humidity:
+        <?= $averages['maximum_humidity'] !== null
+            ? number_format((float)$averages['maximum_humidity'], 2) . " %"
+            : "No data available" ?>
+    </p>
+    <p>
+        Minimum Humidity:
+        <?= $averages['minimum_humidity'] !== null
+            ? number_format((float)$averages['minimum_humidity'], 2) . " %"
             : "No data available" ?>
     </p>
 

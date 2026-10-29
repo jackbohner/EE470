@@ -2,6 +2,9 @@
 // Load private database credentials from outside public_html
 require_once dirname(__DIR__) . "/config.php";
 
+// Use Sonoma State/Pacific time when the request does not provide a time.
+date_default_timezone_set('America/Los_Angeles');
+
 header('Content-Type: text/plain; charset=utf-8');
 
 try {
@@ -76,7 +79,11 @@ try {
         exit("Error: this node is not registered.\n");
     }
 
-    if ($timeReceived !== null && $timeReceived !== '') {
+    // Treat a missing, empty, or whitespace-only time as "use current time".
+    $hasTime = $timeReceived !== null && trim((string)$timeReceived) !== '';
+
+    if ($hasTime) {
+        $timeReceived = trim((string)$timeReceived);
         $date = DateTime::createFromFormat('Y-m-d H:i:s', $timeReceived);
         $validDate = $date && $date->format('Y-m-d H:i:s') === $timeReceived;
 
@@ -112,14 +119,18 @@ try {
             'humidity' => $humidity
         ]);
     } else {
-        // If no time is supplied, use the database server's current time.
+        // If no time is supplied, use the current Pacific time.
+        $currentTime = new DateTime('now', new DateTimeZone('America/Los_Angeles'));
+        $currentTime = $currentTime->format('Y-m-d H:i:s');
+
         $insert = $pdo->prepare(
             "INSERT INTO sensor_data
              (node_name, time_received, temperature, humidity)
-             VALUES (:node_name, NOW(), :temperature, :humidity)"
+             VALUES (:node_name, :time_received, :temperature, :humidity)"
         );
         $insert->execute([
             'node_name' => $nodeName,
+            'time_received' => $currentTime,
             'temperature' => $temperature,
             'humidity' => $humidity
         ]);
@@ -129,6 +140,11 @@ try {
     echo "Node: $nodeName\n";
     echo "Temperature: $temperature\n";
     echo "Humidity: $humidity\n";
+    if (!$hasTime) {
+        echo "Time: $currentTime Pacific time\n";
+    } else {
+        echo "Time: $timeReceived\n";
+    }
 
 } catch (PDOException $e) {
     http_response_code(500);
