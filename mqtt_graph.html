@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ESP8266 Potentiometer Graph</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 30px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #cccccc;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        #status {
+            text-align: center;
+            color: #555555;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>ESP8266 Potentiometer Data</h1>
+
+    <div id="status">Loading data...</div>
+
+    <canvas id="potentiometerChart"></canvas>
+</div>
+
+<script>
+    let potentiometerChart;
+
+    async function loadGraphData() {
+        try {
+            const response = await fetch("data.php");
+
+            if (!response.ok) {
+                throw new Error("Could not load database data");
+            }
+
+            const data = await response.json();
+
+            const labels = data.map(row => row.time);
+            const values = data.map(row => row.value);
+
+            const chartData = {
+                labels: labels,
+
+                datasets: [{
+                    label: "Potentiometer Value",
+                    data: values,
+                    borderColor: "blue",
+                    backgroundColor: "rgba(0, 0, 255, 0.15)",
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.2
+                }]
+            };
+
+            const chartOptions = {
+                responsive: true,
+
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Time"
+                        }
+                    },
+
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Potentiometer Reading"
+                        },
+                        min: 0,
+                        max: 1023
+                    }
+                }
+            };
+
+            if (potentiometerChart) {
+                potentiometerChart.destroy();
+            }
+
+            potentiometerChart = new Chart(
+                document.getElementById("potentiometerChart"),
+                {
+                    type: "line",
+                    data: chartData,
+                    options: chartOptions
+                }
+            );
+
+            document.getElementById("status").textContent =
+                "Data points displayed: " + data.length;
+
+        } catch (error) {
+            document.getElementById("status").textContent =
+                "Error loading graph data: " + error.message;
+        }
+    }
+
+    loadGraphData();
+
+    // Refresh graph every 15 seconds
+    setInterval(loadGraphData, 15000);
+</script>
+
+</body>
+</html>

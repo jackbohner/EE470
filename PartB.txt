@@ -1,0 +1,133 @@
+//-----------------------------
+// Title: MQTT Part B
+//-----------------------------
+// Connects ESP8266 to HiveMQ.
+// Publishes potentiometer readings every 15 seconds.
+//-----------------------------
+
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+
+// Wi-Fi settings
+const char* ssid = "Brandon";
+const char* password = "Stanly@200";
+
+// MQTT settings
+const char* mqtt_server = "broker.hivemq.com";
+const int mqtt_port = 1883;
+
+// Use a unique topic
+const char* publishTopic =
+    "testtopic/temp/outTopic/jackbohner_470";
+
+// Potentiometer pin
+#define POT_PIN A0
+
+// Publish interval: 15 seconds
+const unsigned long publishTimeInterval = 15000;
+
+unsigned long lastMsg = 0;
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+//------------------------------------------------
+
+void setup_wifi() {
+  delay(10);
+
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("Wi-Fi connected");
+
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+//------------------------------------------------
+
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+
+    String clientId = "ESP8266Client-";
+    clientId += String(ESP.getChipId(), HEX);
+
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connected");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" - trying again in 5 seconds");
+
+      delay(5000);
+    }
+  }
+}
+
+//------------------------------------------------
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(POT_PIN, INPUT);
+
+  Serial.println();
+  Serial.println("MQTT Part B");
+  Serial.println("Publishing potentiometer values");
+
+  Serial.print("Publish topic: ");
+  Serial.println(publishTopic);
+
+  setup_wifi();
+
+  client.setServer(mqtt_server, mqtt_port);
+}
+
+//------------------------------------------------
+
+void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+
+  client.loop();
+
+  unsigned long now = millis();
+
+  if (now - lastMsg >= publishTimeInterval) {
+    lastMsg = now;
+
+    int potentiometerValue = analogRead(POT_PIN);
+
+    String message = String(potentiometerValue);
+
+    Serial.print("Potentiometer value: ");
+    Serial.println(message);
+
+    bool successful = client.publish(
+      publishTopic,
+      message.c_str()
+    );
+
+    if (successful) {
+      Serial.println("Message published successfully");
+    } else {
+      Serial.println("Message failed to publish");
+    }
+  }
+
+  delay(10);
+}

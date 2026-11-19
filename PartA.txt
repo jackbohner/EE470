@@ -1,0 +1,93 @@
+#include <Arduino.h>
+
+// Hardware pins
+#define LED_PIN LED_BUILTIN
+#define BUTTON_PIN D5
+#define POT_PIN A0
+
+// Button variables
+int lastRawButtonState = HIGH;
+int stableButtonState = HIGH;
+int currentButtonState = HIGH;
+
+// Button debounce timing
+unsigned long lastButtonChange = 0;
+const unsigned long debounceTime = 50;
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  // Built-in LED is active-low
+  digitalWrite(LED_PIN, HIGH);
+
+  Serial.println();
+  Serial.println("Step A: Local hardware test");
+  Serial.println("Send 1 to turn the LED on.");
+  Serial.println("Send 0 to turn the LED off.");
+}
+
+void loop() {
+  // -------------------------------
+  // Read and display potentiometer
+  // -------------------------------
+  int potentiometerValue = analogRead(POT_PIN);
+
+  float voltage =
+      potentiometerValue * (3.3 / 1023.0);
+
+  Serial.print("Potentiometer: ");
+  Serial.print(potentiometerValue);
+  Serial.print("    Voltage: ");
+  Serial.print(voltage, 2);
+  Serial.println(" V");
+
+  // -------------------------------
+  // Read serial commands for LED
+  // -------------------------------
+  if (Serial.available() > 0) {
+    char command = Serial.read();
+
+    if (command == '1') {
+      digitalWrite(LED_PIN, LOW);
+      Serial.println("LED ON");
+    }
+
+    if (command == '0') {
+      digitalWrite(LED_PIN, HIGH);
+      Serial.println("LED OFF");
+    }
+  }
+
+  // -------------------------------
+  // Read pushbutton
+  // -------------------------------
+  currentButtonState = digitalRead(BUTTON_PIN);
+
+  // Detect a raw button state change
+  if (currentButtonState != lastRawButtonState) {
+    lastButtonChange = millis();
+    lastRawButtonState = currentButtonState;
+  }
+
+  // Confirm the state after debounce time
+  if (millis() - lastButtonChange > debounceTime) {
+    if (currentButtonState != stableButtonState) {
+      stableButtonState = currentButtonState;
+
+      // Button is pressed
+      if (stableButtonState == LOW) {
+        Serial.println("Button pressed: 1");
+      }
+
+      // Button is released
+      if (stableButtonState == HIGH) {
+        Serial.println("Button released: 0");
+      }
+    }
+  }
+
+  delay(500);
+}

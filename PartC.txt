@@ -1,0 +1,275 @@
+//-----------------------------
+// Title: MQTT Part C
+//-----------------------------
+// ESP8266 publishes potentiometer and button values.
+// ESP8266 subscribes to MQTT commands to control the LED.
+//-----------------------------
+
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+
+// Wi-Fi settings
+const char* ssid = "Brandon";
+const char* password = "Stanly@200";
+
+// MQTT settings
+const char* mqtt_server = "broker.hivemq.com";
+const int mqtt_port = 1883;
+
+// MQTT topics
+const char* publishTopic =
+    "testtopic/temp/outTopic/jackbohner_470";
+
+const char* subscribeTopic =
+    "testtopic/temp/inTopic/jackbohner_470";
+
+const char* ledStatusTopic =
+    "testtopic/temp/ledStatus/jackbohner_470";
+
+// Hardware pins
+#define LED_PIN LED_BUILTIN
+#define BUTTON_PIN D5
+#define POT_PIN A0
+
+// Potentiometer publish interval
+const unsigned long publishTimeInterval = 15000;
+
+// MQTT object
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// Timing variables
+unsigned long lastPotentiometerPublish = 0;
+unsigned long lastButtonChange = 0;
+unsigned long buttonReleasedTime = 0;
+
+// Button variables
+int lastRawButtonState = HIGH;
+int stableButtonState = HIGH;
+bool releasePending = false;
+
+//------------------------------------------------
+
+void setup_wifi() {
+  delay(10);
+
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("Wi-Fi connected");
+
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+//------------------------------------------------
+
+void publishLEDStatus(bool ledIsOn) {
+  if (ledIsOn) {
+    client.publish(ledStatusTopic, "1");
+  } else {
+    client.publish(ledStatusTopic, "0");
+  }
+}
+
+//------------------------------------------------
+
+void turnLEDOn() {
+  // Built-in LED is active-low
+  digitalWrite(LED_PIN, LOW);
+
+  Serial.println("LED turned ON");
+  publishLEDStatus(true);
+}
+
+//------------------------------------------------
+
+void turnLEDOff() {
+  // Built-in LED is active-low
+  digitalWrite(LED_PIN, HIGH);
+
+  Serial.println("LED turned OFF");
+  publishLEDStatus(false);
+}
+
+//------------------------------------------------
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  String receivedMessage = "";
+
+  Serial.print("Message arrived on topic: ");
+  Serial.println(topic);
+
+  for (unsigned int i = 0; i < length; i++) {
+    receivedMessage += (char)payload[i];
+  }
+
+  receivedMessage.trim();
+
+  Serial.print("Received message: ");
+  Serial.println(receivedMessage);
+
+  // Control the LED using MQTT
+  if (String(topic) == subscribeTopic) {
+    if (receivedMessage == "1") {
+      turnLEDOn();
+    }
+
+    if (receivedMessage == "0") {
+      turnLEDOff();
+    }
+  }
+}
+
+//------------------------------------------------
+
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+
+    String clientId = "ESP8266Client-";
+    clientId += String(ESP.getChipId(), HEX);
+
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connected");
+
+      // Subscribe after connecting
+      client.subscribe(subscribeTopic);
+
+      Serial.print("Subscribed to: ");
+      Serial.println(subscribeTopic);
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" - trying again in 5 seconds");
+
+      delay(5000);
+    }
+  }
+}
+
+//------------------------------------------------
+
+void readButton() {
+  int currentButtonState = digitalRead(BUTTON_PIN);
+
+  // Detect a raw state change
+  if (currentButtonState != lastRawButtonState) {
+    lastButtonChange = millis();
+    lastRawButtonState = currentButtonState;
+  }
+
+  // Wait for the button to remain stable
+  if (millis() - lastButtonChange >= 50) {
+    if (currentButtonState != stableButtonState) {
+      stableButtonState = currentButtonState;
+
+      // Button pressed
+      if (stableButtonState == LOW) {
+        Serial.println("Button pressed");
+        Serial.println("Publishing 1");
+
+
+        // Send button value to the output topic
+        client.publish(subscribeTopic, "1");
+
+        releasePending = false;
+      }
+
+      // Button released
+      if (stableButtonState == HIGH) {
+        Serial.println("Button released");
+        Serial.println("Starting five-second timer");
+
+        buttonReleasedTime = millis();
+        releasePending = true;
+      }
+    }
+  }
+
+  // Publish 0 five seconds after release
+  if (releasePending &&
+      millis() - buttonReleasedTime >= 5000) {
+
+    // Send release value to the output topic
+    client.publish(subscribeTopic, "0");
+
+    Serial.println("Published 0 after five seconds");
+
+    releasePending = false;
+  }
+}
+//------------------------------------------------
+
+void publishPotentiometer() {
+  if (millis() - lastPotentiometerPublish >=
+      publishTimeInterval) {
+
+    lastPotentiometerPublish = millis();
+
+    int potentiometerValue = analogRead(POT_PIN);
+
+    String message = String(potentiometerValue);
+
+    Serial.print("Potentiometer value: ");
+    Serial.println(message);
+
+    client.publish(
+        publishTopic,
+        message.c_str()
+    );
+  }
+}
+
+//------------------------------------------------
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(POT_PIN, INPUT);
+
+  // Built-in LED starts OFF because it is active-low
+  digitalWrite(LED_PIN, HIGH);
+
+  Serial.println();
+  Serial.println("MQTT Part C");
+
+  Serial.print("Publishing to: ");
+  Serial.println(publishTopic);
+
+  Serial.print("Subscribing to: ");
+  Serial.println(subscribeTopic);
+
+  setup_wifi();
+
+  client.setServer(mqtt_server, mqtt_port);
+  client.setCallback(callback);
+}
+
+//------------------------------------------------
+
+void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+
+  client.loop();
+
+  readButton();
+  publishPotentiometer();
+
+  delay(10);
+}
