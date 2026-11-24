@@ -9,6 +9,15 @@ readAPIKey = '54BRUSNI0QOC46ZS';
     'NumPoints', 20, ...
     'ReadKey', readAPIKey);
 
+
+% Treat ThingSpeak timestamps as UTC
+if isempty(time.TimeZone)
+    time.TimeZone = 'UTC';
+end
+
+% Convert ThingSpeak UTC time to Pacific time
+time.TimeZone = 'America/Los_Angeles';
+
 % Separate the fields
 temperature = data(:, 1);
 cpuPercent = data(:, 2);
