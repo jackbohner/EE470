@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Raspberry Pi Monitoring</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            margin: 20px;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        .panel {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 6px #cccccc;
+        }
+
+        iframe {
+            width: 100%;
+            height: 260px;
+            border: 1px solid #cccccc;
+        }
+
+        button {
+            font-size: 16px;
+            padding: 12px 24px;
+            margin: 8px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .on-button {
+            background-color: #28a745;
+        }
+
+        .off-button {
+            background-color: #dc3545;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        @media (max-width: 700px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Raspberry Pi Monitoring</h1>
+
+    <div class="dashboard">
+
+        <div class="panel">
+            <h2>Temperature</h2>
+
+            <iframe
+                src="https://thingspeak.mathworks.com/channels/3595089/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&xaxis=Time">
+            </iframe>
+        </div>
+
+        <div class="panel">
+            <h2>CPU Usage</h2>
+
+            <iframe
+                src="https://thingspeak.mathworks.com/channels/3595089/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&xaxis=Time">
+            </iframe>
+        </div>
+
+        <div class="panel">
+            <h2>Power Consumption</h2>
+
+            <iframe
+                src="https://thingspeak.mathworks.com/apps/matlab_visualizations/691328?height=auto&width=auto">
+            </iframe>
+        </div>
+
+        <div class="panel">
+            <h2>Average Temperature</h2>
+
+            <iframe
+                src="https://thingspeak.mathworks.com/channels/3595089/widgets/1338873">
+            </iframe>
+        </div>
+
+        <div class="panel">
+            <h2>LED Control</h2>
+
+            <form
+                action="https://api.thingspeak.com/talkbacks/58566/commands.json"
+                method="post"
+                target="_blank">
+
+                <input
+                    type="hidden"
+                    name="api_key"
+                    value="HLE72VM5YIOCCCB8">
+
+                <button
+                    class="on-button"
+                    type="submit"
+                    name="command_string"
+                    value="ON">
+                    Turn LED ON
+                </button>
+            </form>
+
+            <form
+                action="https://api.thingspeak.com/talkbacks/58566/commands.json"
+                method="post"
+                target="_blank">
+
+                <input
+                    type="hidden"
+                    name="api_key"
+                    value="HLE72VM5YIOCCCB8">
+
+                <button
+                    class="off-button"
+                    type="submit"
+                    name="command_string"
+                    value="OFF">
+                    Turn LED OFF
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+</body>
+</html>

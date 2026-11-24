@@ -1,0 +1,39 @@
+% ThingSpeak channel information
+readChannelID = 3595089;
+readAPIKey = '54BRUSNI0QOC46ZS';
+
+% Read temperature and CPU usage
+[data, time] = thingSpeakRead( ...
+    readChannelID, ...
+    'Fields', [1 2], ...
+    'NumPoints', 20, ...
+    'ReadKey', readAPIKey);
+
+% Separate the fields
+temperature = data(:, 1);
+cpuPercent = data(:, 2);
+
+% Convert CPU percentage to decimal form
+cpuFraction = cpuPercent / 100;
+
+% Calculate power
+powerWatts = (2.3 * 100 .* cpuFraction) + ...
+             (temperature .* 0.32);
+
+% Display statistics
+averageTemperature = mean(temperature, 'omitnan');
+standardDeviation = std(temperature, 'omitnan');
+
+disp("Average Temperature:")
+disp(averageTemperature)
+
+disp("Temperature Standard Deviation:")
+disp(standardDeviation)
+
+% Plot calculated power
+plot(time, powerWatts, 'b-o', 'LineWidth', 2)
+grid on
+
+xlabel('Time')
+ylabel('Power (W)')
+title('Estimated Raspberry Pi Power Consumption')
